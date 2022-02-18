@@ -28,6 +28,8 @@ class ReactiveEffect {
           dep.delete(this);
         }
       });
+      // 清空数组
+      this.deps.length = 0;
       this.active = false;
       this.onStop && this.onStop();
     }
@@ -48,8 +50,12 @@ export function stop(runner) {
   runner.effect.stop();
 }
 
+export function isTracking() {
+  return shouldTrack && activeEffect !== undefined;
+}
+
 export function track(target, key) {
-  if (!shouldTrack) return;
+  if (!isTracking()) return;
   let depsMap = targetMap.get(target);
 
   if (!depsMap) {
@@ -63,6 +69,10 @@ export function track(target, key) {
     dep = new Set();
     depsMap.set(key, dep);
   }
+  trackEffect(dep);
+}
+
+export function trackEffect(dep) {
   if (activeEffect) {
     dep.add(activeEffect);
     activeEffect.deps.push(dep);
@@ -75,6 +85,10 @@ export function trigger(target, key) {
   const dep = depsMap.get(key);
   if (!dep) return;
 
+  triggerEffect(dep);
+}
+
+export function triggerEffect(dep) {
   for (const effect of dep) {
     // 在后面的实现中，被收集的依赖会有run方法，在该方法中会执行真正需要执行的函数
     if (typeof effect.scheduler === "function") {
